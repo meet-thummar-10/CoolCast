@@ -27,8 +27,8 @@ Both raw files are timezone-naive and the zone is not stated. We assume they sha
 |---|---|---|
 | `load_demo_data()` | none | DataFrame: `ts, it_kw, cooling_kw, pump_kw, hvac_kw, plug_kw, total_kw, mechanical_kw, temp_c, humidity` |
 | `quality_report(df)` | DataFrame | dict: `completeness, missing_hours, longest_gap_h, grade` |
-| `compute_kpis(df, tariff, emission_factor)` | DataFrame, number, number | dict: `pue, it_kwh, total_kwh, cooling_share, cost, co2_kg, cue` |
-| `pue_by_load(df)` | DataFrame | DataFrame: `load_bin, pue` |
+| `compute_kpis(df, tariff, emission_factor)` | DataFrame, number, number | dict: `pue, it_kwh, total_kwh, cooling_share, cost, co2_kg, cue` (ratios are None when there is no IT energy) |
+| `pue_by_load(df)` | DataFrame | DataFrame: `load_bin, it_kw_mid, pue, hours` (10 equal-width IT-load bins, empty bins left out) |
 | `train_models(df)` | DataFrame | dict of fitted models and a metrics DataFrame (`model, mae, rmse, r2`) |
 | `benchmark_energy(model, X)` | model, features | dict: `train_wh, infer_wh_per_1k, co2_g` |
 | `pick_greenest(metrics_df, tolerance)` | DataFrame, number | model name |

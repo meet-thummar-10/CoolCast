@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# CoolCast
+.venv/
+.env
+.DS_Store
+data/raw/
+data/processed/
+results/
+emissions.csv
+handoff/

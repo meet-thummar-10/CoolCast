@@ -1,0 +1,27 @@
+# Assumed inputs used by CoolCast. Every value here is an assumption, not a
+# measurement. Users can change tariff and emission factor in the app sidebar.
+# Explanations: docs/assumptions.md
+
+[tariff]
+value = 8.0
+unit = "₹/kWh"
+source = "Team assumption: typical Indian commercial electricity tariff (₹7-10/kWh)"
+label = "assumed"
+
+[emission_factor]
+value = 0.675
+unit = "kg CO2/kWh"
+source = "CEA CO2 Baseline Database for the Indian Power Sector, version 22.0 (FY 2025-26), weighted average grid emission factor (0.675 tCO2/MWh)."
+label = "assumed"
+
+[greenest_tolerance]
+value = 0.05
+unit = "fraction of best MAE"
+source = "Team choice: a model may be up to 5 % less accurate than the best one if it uses less energy"
+label = "assumed"
+
+[cooling_reduction]
+value = 0.10
+unit = "fraction of cooling overhead"
+source = "Team scenario: AI-guided control reduces cooling overhead by 10 %"
+label = "assumed"

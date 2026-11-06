@@ -5,11 +5,56 @@ NLR HPC Facility Power Usage Effectiveness (PUE) Data
 https://data.nlr.gov/submissions/300 (CC BY 4.0)
 
 ## Files to download into data/raw/
-- ESIF DC Power Metrics Timeseries (Parquet)
-- ESIF DC Outside Weather Station Timeseries (Parquet)
-- README from the dataset page
+Save them under these names:
+
+| Dataset page link | Save as |
+|---|---|
+| ESIF DC Power Metrics Timeseries Data (Parquet) | `esif.influx.buildingData.PUE.combined.parquet` |
+| ESIF DC Outside Weather Station Timeseries Data (Parquet) | `esif.influx.buildingData.outside.combined.parquet` |
+| README | `README.md` |
 
 Then run `python scripts/inspect_data.py` to print a summary of each file.
+
+## Cleaning rules
+`python scripts/build_hourly.py` applies these rules (code: `src/clean.py`) and
+writes `data/processed/hourly.parquet`, which is not committed.
+
+| Step | Rule | Effect on the raw data |
+|---|---|---|
+| Start time | Drop power rows before 2016-06-12 06:00 (no per-component breakdown) and the 1970 weather placeholder row | 136,484 power rows, 1 weather row |
+| Negative power | Any component below 0 kW is invalid | cooling 113, pump 475, hvac 428 readings |
+| Power spikes | cooling > 150 kW, pump > 150 kW, hvac > 500 kW, plug > 50 kW, IT > 5,000 kW are invalid (99.99th percentiles: cooling 62, pump 65, hvac 216 kW) | cooling 54, hvac 1 reading |
+| Complete minutes | A minute is kept only if all five components are valid | 39 rows had a missing component |
+| Impossible PUE | Drop minutes where (sum of components / IT) is outside 1 to 3 | included in the 626 power minutes removed in total |
+| Temperature | Keep -30 °F to 115 °F, then convert to °C with `(F - 32) * 5/9` | 1 reading (-39.4 °F) |
+| Humidity | Keep values above 0 % and up to 100 %; exactly 0 % is a sensor dropout | 5,521 readings, mostly 2017-2019 |
+| Hourly power | Mean of valid minutes; the hour is kept only with at least 45 of 60 minutes | |
+| Hourly weather | Mean of valid readings; the hour is kept only with at least 20 readings. Weather was logged every 2 minutes in 2019, so a 45-reading rule would drop most of that year | |
+| Grid | One row per hour from the first to the last power hour; hours that fail a rule stay as missing values so gaps remain visible | |
+| Derived columns | `total_kw` = sum of the 5 components; `mechanical_kw` = cooling + pump + hvac | |
+
+### Result (built on 2026-11-06)
+- 80,759 hours from 2016-06-12 06:00 to 2025-08-29 04:00
+- Power data in 72,282 hours (89.5 %), weather data in 71,747 hours (88.8 %)
+- Annual PUE (ratio of sums):
+
+| Year | PUE |
+|---|---|
+| 2016 (from June) | 1.0350 |
+| 2017 | 1.0327 |
+| 2018 | 1.0301 |
+| 2019 | 1.0296 |
+| 2020 | 1.0286 |
+| 2021 | 1.0244 |
+| 2022 | 1.0381 |
+| 2023 | 1.0339 |
+| 2024 | 1.0706 |
+| 2025 (to August) | 1.0650 |
+| All years | 1.0440 |
+
+2016 to 2023 are within 0.012 of NLR's published annualised PUE of 1.036.
+2024 and 2025 are clearly higher; the cause (a change at the facility or in
+metering) is not stated in the dataset README.
 
 ## Attribution
 Data cleaned and resampled by the authors for this study.

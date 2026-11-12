@@ -6,6 +6,5 @@ numpy==2.4.6
 pyarrow==26.0.1
 scikit-learn==1.9.1
 plotly==7.1.0
-codecarbon==3.3.2
 pytest==9.2.0
 ruff==0.17.4

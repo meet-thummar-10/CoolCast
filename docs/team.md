@@ -2,7 +2,7 @@
 
 | Name | Role | GitHub username |
 |---|---|---|
-| Meet Thummar | Team leader, Backend (data and metrics) | @meet-thummar-10 |
-| Thishant Jadav | Backend (ML and Green AI) | @thishantjadavofficial |
-| Badi Rasmin | Frontend (pages A) | @rasminbadi2007 |
-| Yesha Makwana | Frontend (pages B) | @yesha210807 |
+| Meet Thummar | Team leader, Backend (upload, cleaning, metrics, location data, recommendations) | @meet-thummar-10 |
+| Thishant Jadav | Backend (forecasts, anomalies, benchmark, export) | @thishantjadavofficial |
+| Badi Rasmin | Frontend (shared components, upload screen, analysis pages) | @rasminbadi2007 |
+| Yesha Makwana | Frontend (app shell, questions and loading screens, analysis pages) | @yesha210807 |

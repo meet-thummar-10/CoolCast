@@ -32,4 +32,4 @@
 - [ ] The app still runs from a clean checkout
 
 ## Definition of done
-Works with the demo data, tests pass, reviewed, merged to main.
+Works with the development sample data, tests pass, reviewed, merged to main.

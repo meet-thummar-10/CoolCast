@@ -37,6 +37,6 @@ assignees: ""
 (exact commands)
 
 ## Definition of done
-- [ ] Works with the demo data
+- [ ] Works with the development sample data
 - [ ] Tests pass and CI is green
 - [ ] Reviewed and merged

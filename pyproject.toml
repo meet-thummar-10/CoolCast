@@ -1,7 +1,7 @@
 [project]
 name = "coolcast"
 version = "0.1.0"
-description = "Green AI for data-centre energy efficiency"
+description = "Find where your data centre wastes energy, and how to cut its cost"
 requires-python = ">=3.11"
 
 [tool.ruff]

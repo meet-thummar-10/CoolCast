@@ -30,10 +30,15 @@ Both raw files are timezone-naive and the zone is not stated. We assume they sha
 | `compute_kpis(df, tariff, emission_factor)` | DataFrame, number, number | dict: `pue, it_kwh, total_kwh, cooling_share, cost, co2_kg, cue` (ratios are None when there is no IT energy) |
 | `pue_by_load(df)` | DataFrame | DataFrame: `load_bin, it_kw_mid, pue, hours` (10 equal-width IT-load bins, empty bins left out) |
 | `train_models(df)` | DataFrame | dict of fitted models and a metrics DataFrame (`model, mae, rmse, r2`) |
-| `benchmark_energy(model, X)` | model, features | dict: `train_wh, infer_wh_per_1k, co2_g` |
-| `pick_greenest(metrics_df, tolerance)` | DataFrame, number | model name |
 | `flag_anomalies(df, predictions)` | DataFrame, array | DataFrame: `start, end, hours, excess_kwh` |
-| `net_energy(it_kw, pue, reduction, ai_kwh, tariff, ef)` | numbers | dict: `saved_kwh, cost, co2_kg, new_pue, net_kwh` |
+| `net_energy(it_kw, pue, reduction, ai_kwh, tariff, ef)` | numbers | dict: `saved_kwh, cost, co2_kg, new_pue, net_kwh` (to be replaced by a range-based savings calculator, see the issues) |
+
+## Planned for the new design (names are fixed in each issue)
+- Upload: read a CSV or Excel file, match its columns to the standard names, check data length (< 1 month blocked, 1-6 months warning, 6+ good).
+- Location: country and city to coordinates, currency, grid CO2 factor and carbon price; past weather for those coordinates.
+- Recommendations: the "How to reduce your cost" steps with ranges (see `docs/assumptions.md`).
+- Benchmark: the user's PUE against published global figures.
+- Export: PDF report and Excel workbook.
 
 Rules: energy kWh = power kW x interval hours. Annual PUE is a ratio of
 sums, never an average of hourly ratios.

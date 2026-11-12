@@ -25,16 +25,19 @@ Country and city (question 1, required) set the values below. Code:
 | **National average electricity price** (hint only) | Not filled yet | The user's own bill price (question 2) is always used for results |
 
 ## Saving ranges used by "How to reduce your cost"
-Each range is applied only to the part of the energy it affects, is
-labelled "Estimate", is rounded to 2 significant figures, and is never
-added to the others. The low end can be 0.
+Code: `src/recommend.py`. Each range is applied only to the part of the
+energy it affects, is labelled "Estimate", is rounded to 2 significant
+figures, and is never added to the others. The low end can be 0. Savings
+are for the **period covered by the user's data**, not stretched to a full
+year (stretching 3 winter months to a year would badly understate cooling).
+A step is skipped, with a reason, when the user's answers or data rule it out.
 
 | Step | Range used | Applied to | Source |
 |---|---|---|---|
-| Raise cooling setpoint (up to 27 °C) | 2-4 % per °C of headroom | cooling-system energy | Cell Reports Physical Science (2-6 %/°C; cautious half used); ASHRAE 18-27 °C via LBNL; ENERGY STAR |
+| Raise cooling setpoint (up to 27 °C) | 2-4 % per °C of headroom (headroom counted from 18 °C at most; "I don't know" = 1 °C) | cooling-system energy | Cell Reports Physical Science (2-6 %/°C; cautious half used); ASHRAE 18-27 °C via LBNL; ENERGY STAR |
 | Variable-speed pumps and fans | 0-27 % | pump and fan energy | Affinity law, 10 % slower ≈ 27 % less (ASHE); US DOE |
 | Switch off unused servers | per 1 % of IT power, × PUE | IT energy | Uptime Institute (15-30 % comatose); Koomey / Anthesis |
-| UPS efficiency mode | 0-2 % | total facility energy | ENERGY STAR; US DOE FEMP |
+| UPS efficiency mode | 0-2 % (0-1 % if only some units run in normal mode) | total facility energy | ENERGY STAR; US DOE FEMP |
 | Lighting sensors | 10-25 % | lights and plugs energy | LBNL (20-26 % measured) |
 | Free cooling | feasibility only, no range | hours with wet-bulb below 12.8 °C (≥ 3,000 h/yr suits) | ENERGY STAR / US DOE |
 
@@ -44,3 +47,11 @@ added to the others. The low end can be 0.
   example values, so development figures are scenarios, not that
   facility's real cost or emissions.
 - Savings are estimates. CoolCast does not control any equipment.
+
+## Overhead split
+`overhead_split()` fits overhead power (total − IT) = a + b × IT power +
+c × cooling degrees (outdoor temperature above 10 °C) and reports each
+part's share of the overhead energy: **always on**, **follows the
+servers**, **follows the weather**, with the fit quality (R²). On the
+development data: 83 % / 2 % / 15 %, R² 0.50. Without temperature, only
+the first two parts are fitted.

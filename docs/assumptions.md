@@ -10,12 +10,19 @@ in `config/assumptions.toml`; change them there, not in code.
 | `emission_factor` | 0.675 | kg CO2/kWh | Fallback for development and tests only: CEA CO2 Baseline Database for the Indian Power Sector, version 22.0 (FY 2025-26). In the app the factor comes from the user's location (Ember data or the official national factor). |
 
 ## Values that come from the user's location
-Country and city (question 1, required) set:
-- **Currency** of all money results (with that currency's number format,
-  for example lakh/crore for ₹, thousands/millions for $ and €)
-- **Past local weather** (Open-Meteo, ERA5) for forecasts and free-cooling hours
-- **Grid CO2 factor** (Ember or the official national factor)
-- **Carbon price**, where one applies (World Bank Carbon Pricing Dashboard)
+Country and city (question 1, required) set the values below. Code:
+`src/location.py`; country table: `config/countries.csv` (rebuild with
+`python scripts/build_countries.py`).
+
+| Value | Source | Notes |
+|---|---|---|
+| **Currency** of all money results | ISO 4217 code per country (datasets/country-codes) | 246 countries and territories, 153 currencies. Number format: lakh/crore for ₹, thousands/millions for others |
+| **Grid CO2 factor** (kg CO2/kWh) | Ember yearly electricity data: emissions intensity of generation, latest year (lifecycle gCO2e/kWh) | Known for 207 countries. **India** uses the official CEA CO2 Baseline Database v22 (0.675). Missing for some small territories: the user is asked to enter it |
+| **City coordinates** | Open-Meteo geocoding API | Only the city name is sent |
+| **Past local weather** (temperature, humidity, hourly, local time) | Open-Meteo historical weather API (ERA5 reanalysis) | Used only when the uploaded file has no outdoor temperature/humidity |
+| **Free-cooling hours** | Wet-bulb from Stull (2011); hours below 12.8 °C (55 °F), scaled to a year | ENERGY STAR / US DOE: water-side economisers suit climates with ≥ 3,000 such hours |
+| **Carbon price** | Not filled yet | No verified, machine-readable source yet (the World Bank dashboard blocks automated downloads). Shown only once each value is checked by hand |
+| **National average electricity price** (hint only) | Not filled yet | The user's own bill price (question 2) is always used for results |
 
 ## Saving ranges used by "How to reduce your cost"
 Each range is applied only to the part of the energy it affects, is

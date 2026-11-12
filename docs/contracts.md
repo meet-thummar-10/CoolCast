@@ -27,30 +27,14 @@ Both raw files are timezone-naive and the zone is not stated. We assume they sha
 |---|---|---|
 | `load_demo_data()` | none | DataFrame: `ts, it_kw, cooling_kw, pump_kw, hvac_kw, plug_kw, total_kw, mechanical_kw, temp_c, humidity` |
 | `quality_report(df)` | DataFrame | dict: `completeness, missing_hours, longest_gap_h, grade` |
-| `compute_kpis(df, tariff, emission_factor)` | DataFrame, number, number | dict: `pue, it_kwh, total_kwh, cooling_share, cost, co2_kg, cue` (ratios are None when there is no IT energy; `cooling_share` is None without cooling columns). Needs only `ts, it_kw, total_kw` |
+| `compute_kpis(df, tariff, emission_factor)` | DataFrame, number, number | dict: `pue, it_kwh, total_kwh, cooling_share, cost, co2_kg, cue` (ratios are None when there is no IT energy) |
 | `pue_by_load(df)` | DataFrame | DataFrame: `load_bin, it_kw_mid, pue, hours` (10 equal-width IT-load bins, empty bins left out) |
-| `train_models(df)` | DataFrame | dict of fitted models and a metrics DataFrame (`model, mae, rmse, r2`) |
+| `train_models(df, target="total_kw")` | DataFrame, column name | dict: `models` (name → fitted model), `metrics` DataFrame (`model, mae, rmse, r2`, best first), `predictions` DataFrame (`ts, actual`, one column per model), `best` (model name) |
 | `flag_anomalies(df, predictions)` | DataFrame, array | DataFrame: `start, end, hours, excess_kwh` |
 | `net_energy(it_kw, pue, reduction, ai_kwh, tariff, ef)` | numbers | dict: `saved_kwh, cost, co2_kg, new_pue, net_kwh` (to be replaced by a range-based savings calculator, see the issues) |
 
-## Uploaded files (`src/upload.py`)
-
-Standard hourly table: `ts`, `it_kw`, `total_kw` always; `cooling_kw`, `pump_kw`,
-`hvac_kw`, `plug_kw`, `other_kw`, `mechanical_kw`, `temp_c`, `humidity` only when
-the file has them. Missing readings are empty (NaN), never 0.
-
-| Function | Inputs | Returns |
-|---|---|---|
-| `read_file(file, name=None)` | path or file-like (.csv UTF-8 or .xlsx, up to 200 MB) | DataFrame of text cells |
-| `suggest_mapping(df)` | raw DataFrame | dict: column → (standard name or None, confidence 0-1) |
-| `guess_units(df, mapping)` | raw DataFrame, mapping | dict: standard name → unit (`kW`/`W`/`kWh`, `C`/`F`, `pct`/`fraction`) |
-| `apply_mapping(df, mapping, options=None)` | raw DataFrame, mapping, `{units, dayfirst}` | (standard hourly table, report: `rows_read, rows_bad_time, duplicates_removed, faulty_readings, interval_minutes, hours, missing_hours, start, end, columns`) |
-| `check_length(df)` | standard table | dict: `days, months, level` (`blocked` < 1 month, `limited` 1-6, `good` 6-12, `best` 12+), `message` |
-| `template_csv()`, `example_csv(months=6)` | none | CSV bytes for the Upload screen's download buttons |
-
-Problems with a user's file raise `UploadError` (a `ValueError`) with a message the user can act on.
-
 ## Planned for the new design (names are fixed in each issue)
+- Upload: read a CSV or Excel file, match its columns to the standard names, check data length (< 1 month blocked, 1-6 months warning, 6+ good).
 - Location: country and city to coordinates, currency, grid CO2 factor and carbon price; past weather for those coordinates.
 - Recommendations: the "How to reduce your cost" steps with ranges (see `docs/assumptions.md`).
 - Benchmark: the user's PUE against published global figures.

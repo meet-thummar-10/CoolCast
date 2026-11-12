@@ -31,7 +31,7 @@ Both raw files are timezone-naive and the zone is not stated. We assume they sha
 | `pue_by_load(df)` | DataFrame | DataFrame: `load_bin, it_kw_mid, pue, hours` (10 equal-width IT-load bins, empty bins left out) |
 | `train_models(df)` | DataFrame | dict of fitted models and a metrics DataFrame (`model, mae, rmse, r2`) |
 | `flag_anomalies(df, predictions)` | DataFrame, array | DataFrame: `start, end, hours, excess_kwh` |
-| `net_energy(it_kw, pue, reduction, ai_kwh, tariff, ef)` | numbers | dict: `saved_kwh, cost, co2_kg, new_pue, net_kwh` (to be replaced by a range-based savings calculator, see the issues) |
+| `savings_range(it_kwh, pue, cut_low, cut_high, it_off_low, it_off_high, tariff, ef, one_off_cost=0)` | numbers (cuts in %, 0-100) | dict of `(low, high)` pairs: `kwh, money, co2_kg, new_pue` (best, worst), `payback_years` (shortest, longest or None) or None; and `verdict` (`likely`, `uncertain`, `none`) |
 
 ## Uploaded files (`src/upload.py`)
 

@@ -2,15 +2,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.clean import COMPONENTS
 from src.data import load_demo_data
 from src.quality import grade_for, quality_report
 
 
 def hourly(n=100):
     df = pd.DataFrame({"ts": pd.date_range("2023-01-01", periods=n, freq="h")})
-    for col in COMPONENTS:
-        df[col] = 10.0
+    df["it_kw"] = 10.0
+    df["total_kw"] = 11.0
     return df
 
 
@@ -22,7 +21,7 @@ def test_complete_data():
 
 def test_ten_missing_hours():
     df = hourly()
-    df.loc[10:19, "cooling_kw"] = np.nan
+    df.loc[10:19, "total_kw"] = np.nan
     report = quality_report(df)
     assert report["completeness"] == pytest.approx(0.9)
     assert report["missing_hours"] == 10

@@ -1,48 +1,80 @@
-"""Savings calculator: does AI-guided cooling save more energy than the AI uses?
+"""Savings calculator: turn the user's low and high guesses into saving ranges.
 
-All results are scenarios (label: modelled). CoolCast does not control any
-cooling system.
+Two changes are modelled together:
+- a cut in overhead (cooling, pumps, UPS losses...): the part of PUE above 1
+- IT power switched off (unused servers), which also removes the overhead it caused
+
+Results are estimates (label: estimate) shown as ranges, never single numbers.
+CoolCast does not control any equipment.
 """
 
-HOURS_PER_YEAR = 8760
+LIKELY, UNCERTAIN, NONE = "likely", "uncertain", "none"
 
 
-def _check_inputs(it_kw, pue, reduction, ai_kwh, tariff, ef) -> None:
+def _pct(name: str, value: float) -> float:
+    if not 0 <= value <= 100:
+        raise ValueError(f"{name} must be a percentage between 0 and 100 (got {value})")
+    return value / 100
+
+
+def _check(it_kwh, pue, tariff, ef, one_off_cost) -> None:
     if pue < 1:
         raise ValueError(f"PUE cannot be below 1 (got {pue})")
-    if not 0 <= reduction <= 1:
-        raise ValueError(f"reduction must be between 0 and 1 (got {reduction})")
-    for name, value in {"it_kw": it_kw, "ai_kwh": ai_kwh, "tariff": tariff, "ef": ef}.items():
+    values = {"it_kwh": it_kwh, "tariff": tariff, "ef": ef, "one_off_cost": one_off_cost}
+    for name, value in values.items():
         if value < 0:
             raise ValueError(f"{name} cannot be negative (got {value})")
 
 
-def net_energy(it_kw: float, pue: float, reduction: float, ai_kwh: float,
-               tariff: float, ef: float) -> dict:
-    """Yearly savings if cooling overhead drops by ``reduction``, minus the AI's own energy.
+def _after(it_kwh: float, pue: float, cut: float, it_off: float) -> float:
+    """Total energy after the changes: remaining IT x (1 + remaining overhead share)."""
+    return it_kwh * (1 - it_off) * (1 + (pue - 1) * (1 - cut))
+
+
+def savings_range(it_kwh: float, pue: float, cut_low: float, cut_high: float,
+                  it_off_low: float, it_off_high: float, tariff: float, ef: float,
+                  one_off_cost: float = 0) -> dict:
+    """Yearly saving range from low and high guesses.
 
     Args:
-        it_kw: average IT load (kW)
-        pue: current PUE (at least 1)
-        reduction: fraction of the overhead (PUE - 1) removed, 0 to 1
-        ai_kwh: energy the AI uses per year (kWh), e.g. training plus predictions
-        tariff: electricity price (₹/kWh)
+        it_kwh: IT energy per year (kWh), from the user's data
+        pue: current PUE (at least 1), from the user's data
+        cut_low, cut_high: cut in overhead, % (0-100), in either order
+        it_off_low, it_off_high: IT power switched off, % (0-100), in either order
+        tariff: electricity price per kWh in the user's currency
         ef: grid emission factor (kg CO2/kWh)
+        one_off_cost: cost of making the changes, same currency (0 = not given)
 
-    Returns ``{saved_kwh, cost, co2_kg, new_pue, net_kwh}`` where ``saved_kwh``
-    is the gross saving, ``net_kwh`` is the saving after the AI's energy, and
-    ``cost`` and ``co2_kg`` are the money and CO2 saved on ``net_kwh``.
-    A negative ``net_kwh`` means the AI uses more energy than it saves.
+    Returns a dict where each value is ``(low, high)``:
+    ``kwh``, ``money``, ``co2_kg`` (saved per year), ``new_pue`` (best, worst),
+    ``payback_years`` (shortest, longest; longest is None when the low saving
+    is 0) or None when there is no cost or no saving, and ``verdict``:
+    "likely" (even the low end saves), "uncertain" (low end is 0) or "none".
     """
-    _check_inputs(it_kw, pue, reduction, ai_kwh, tariff, ef)
-    it_kwh = it_kw * HOURS_PER_YEAR
-    overhead_kwh = (pue - 1) * it_kwh
-    saved_kwh = overhead_kwh * reduction
-    net_kwh = saved_kwh - ai_kwh
+    _check(it_kwh, pue, tariff, ef, one_off_cost)
+    cuts = sorted((_pct("cut_low", cut_low), _pct("cut_high", cut_high)))
+    offs = sorted((_pct("it_off_low", it_off_low), _pct("it_off_high", it_off_high)))
+
+    today = it_kwh * pue
+    low = today - _after(it_kwh, pue, cuts[0], offs[0])
+    high = today - _after(it_kwh, pue, cuts[1], offs[1])
+    low, high = max(low, 0.0), max(high, 0.0)
+
+    def new_pue(cut: float) -> float:
+        # Switching off IT removes its overhead too, so PUE depends only on the cut.
+        return 1 + (pue - 1) * (1 - cut)
+
+    money = (low * tariff, high * tariff)
+    payback = None
+    if one_off_cost > 0 and money[1] > 0:
+        payback = (one_off_cost / money[1], one_off_cost / money[0] if money[0] > 0 else None)
+
+    verdict = LIKELY if low > 0 else UNCERTAIN if high > 0 else NONE
     return {
-        "saved_kwh": saved_kwh,
-        "cost": net_kwh * tariff,
-        "co2_kg": net_kwh * ef,
-        "new_pue": pue - (pue - 1) * reduction,
-        "net_kwh": net_kwh,
+        "kwh": (low, high),
+        "money": money,
+        "co2_kg": (low * ef, high * ef),
+        "new_pue": (new_pue(cuts[1]), new_pue(cuts[0])),
+        "payback_years": payback,
+        "verdict": verdict,
     }

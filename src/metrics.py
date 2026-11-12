@@ -7,8 +7,6 @@ Rules (docs/contracts.md):
 
 import pandas as pd
 
-from src.clean import COMPONENTS, MECHANICAL
-
 N_LOAD_BINS = 10
 
 
@@ -20,16 +18,20 @@ def interval_hours(df: pd.DataFrame) -> float:
     return step.iloc[0].total_seconds() / 3600 if len(step) else 1.0
 
 
+REQUIRED = ["it_kw", "total_kw"]
+
+
 def complete_rows(df: pd.DataFrame) -> pd.DataFrame:
-    """Rows where all five power components have a value."""
-    return df.dropna(subset=COMPONENTS)
+    """Rows where both IT power and total facility power have a value."""
+    return df.dropna(subset=REQUIRED)
 
 
 def compute_kpis(df: pd.DataFrame, tariff: float, emission_factor: float) -> dict:
     """Energy, efficiency, cost and CO2 for the rows in ``df``.
 
-    ``tariff`` is in ₹/kWh and ``emission_factor`` in kg CO2/kWh.
-    Rows with any missing power value are skipped.
+    ``tariff`` is the price per kWh in the user's currency and
+    ``emission_factor`` is in kg CO2/kWh. Rows without IT or total power are
+    skipped. ``cooling_share`` is None when the file has no cooling columns.
 
     Returns ``{pue, it_kwh, total_kwh, cooling_share, cost, co2_kg, cue}``.
     Ratios are None when there is no IT energy to divide by.
@@ -37,15 +39,16 @@ def compute_kpis(df: pd.DataFrame, tariff: float, emission_factor: float) -> dic
     rows = complete_rows(df)
     hours = interval_hours(df)
     it_kwh = float(rows["it_kw"].sum() * hours)
-    total_kwh = float(rows[COMPONENTS].sum(axis=1).sum() * hours)
-    mechanical_kwh = float(rows[MECHANICAL].sum(axis=1).sum() * hours)
+    total_kwh = float(rows["total_kw"].sum() * hours)
+    has_cooling = "mechanical_kw" in rows and rows["mechanical_kw"].notna().any()
+    mechanical_kwh = float(rows["mechanical_kw"].sum() * hours) if has_cooling else None
     co2_kg = total_kwh * emission_factor
 
     return {
         "pue": total_kwh / it_kwh if it_kwh else None,
         "it_kwh": it_kwh,
         "total_kwh": total_kwh,
-        "cooling_share": mechanical_kwh / total_kwh if total_kwh else None,
+        "cooling_share": mechanical_kwh / total_kwh if total_kwh and has_cooling else None,
         "cost": total_kwh * tariff,
         "co2_kg": co2_kg,
         "cue": co2_kg / it_kwh if it_kwh else None,
@@ -64,7 +67,7 @@ def pue_by_load(df: pd.DataFrame, bins: int = N_LOAD_BINS) -> pd.DataFrame:
     if rows.empty:
         return pd.DataFrame(columns=columns)
 
-    total = rows[COMPONENTS].sum(axis=1)
+    total = rows["total_kw"]
     groups = pd.cut(rows["it_kw"], bins=bins, include_lowest=True)
     sums = pd.DataFrame({"total": total, "it": rows["it_kw"], "bin": groups})
     agg = sums.groupby("bin", observed=True).agg(total=("total", "sum"), it=("it", "sum"),

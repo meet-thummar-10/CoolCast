@@ -7,7 +7,7 @@ from src.metrics import compute_kpis, interval_hours, pue_by_load
 
 
 def table(it, total, start="2023-01-01", freq="h"):
-    """Hourly table where all overhead is cooling, so total = it + cooling."""
+    """Standard hourly table where all overhead is cooling, so total = it + cooling."""
     it = np.asarray(it, dtype=float)
     total = np.asarray(total, dtype=float)
     return pd.DataFrame({
@@ -17,6 +17,8 @@ def table(it, total, start="2023-01-01", freq="h"):
         "pump_kw": 0.0,
         "hvac_kw": 0.0,
         "plug_kw": 0.0,
+        "total_kw": total,
+        "mechanical_kw": total - it,
     })
 
 
@@ -33,8 +35,16 @@ def test_issue_example():
 
 def test_rows_with_missing_power_are_skipped():
     df = table([100, 300, 500], [120, 330, 600])
-    df.loc[2, "pump_kw"] = np.nan
+    df.loc[2, "total_kw"] = np.nan
     assert compute_kpis(df, 8, 0.7)["it_kwh"] == pytest.approx(400)
+
+
+def test_works_with_only_it_and_total_power():
+    df = table([100, 300], [120, 330])[["ts", "it_kw", "total_kw"]]
+    kpis = compute_kpis(df, tariff=8, emission_factor=0.7)
+    assert kpis["pue"] == pytest.approx(1.125)
+    assert kpis["cooling_share"] is None
+    assert pue_by_load(df)["hours"].sum() == 2
 
 
 def test_energy_uses_the_time_step():

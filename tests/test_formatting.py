@@ -40,9 +40,11 @@ def test_fmt_money(amount, currency, text):
     assert fmt_money(amount, currency) == text
 
 
-def test_unknown_currency_raises():
-    with pytest.raises(ValueError, match="XYZ"):
-        fmt_money(10, "XYZ")
+def test_any_iso_currency_works_and_bad_codes_raise():
+    assert fmt_money(12_500, "UGX") == "UGX 12,500"
+    assert fmt_money(3_400_000, "BHD") == "BHD 3.4 million"
+    with pytest.raises(ValueError, match="dollars"):
+        fmt_money(10, "dollars")
 
 
 def test_fmt_pct_and_co2():

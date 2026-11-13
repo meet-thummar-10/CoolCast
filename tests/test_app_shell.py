@@ -37,12 +37,8 @@ def test_flow_from_landing_to_analysis():
     at = app()
     at.button(key="upload_top").click().run()
     assert at.session_state["stage"] == "upload"
-    # The upload step itself is tested in test_upload_screen.py; continue from questions.
-    at.session_state["stage"] = "questions"
-    at.run()
-    for expected in ("analysing", "analysis"):
-        at.button(key="next").click().run()
-        assert at.session_state["stage"] == expected
+    # The upload, questions and analysing steps have their own tests
+    # (test_upload_screen.py, test_questions.py).
     assert not at.exception
 
 

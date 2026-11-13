@@ -29,7 +29,7 @@ Both raw files are timezone-naive and the zone is not stated. We assume they sha
 | `quality_report(df)` | DataFrame | dict: `completeness, missing_hours, longest_gap_h, grade` |
 | `compute_kpis(df, tariff, emission_factor)` | DataFrame, number, number | dict: `pue, it_kwh, total_kwh, cooling_share, cost, co2_kg, cue` (ratios are None when there is no IT energy; `cooling_share` is None without cooling columns). Needs only `ts, it_kw, total_kw` |
 | `pue_by_load(df)` | DataFrame | DataFrame: `load_bin, it_kw_mid, pue, hours` (10 equal-width IT-load bins, empty bins left out) |
-| `train_models(df)` | DataFrame | dict of fitted models and a metrics DataFrame (`model, mae, rmse, r2`) |
+| `train_models(df, target="total_kw")` | DataFrame, column name | dict: `models` (name → fitted model), `metrics` DataFrame (`model, mae, rmse, r2`, best first), `predictions` DataFrame (`ts, actual`, one column per model), `best` (model name) |
 | `flag_anomalies(df, predictions)` | DataFrame, array | DataFrame: `start, end, hours, excess_kwh` |
 | `savings_range(it_kwh, pue, cut_low, cut_high, it_off_low, it_off_high, tariff, ef, one_off_cost=0)` | numbers (cuts in %, 0-100) | dict of `(low, high)` pairs: `kwh, money, co2_kg, new_pue` (best, worst), `payback_years` (shortest, longest or None) or None; and `verdict` (`likely`, `uncertain`, `none`) |
 

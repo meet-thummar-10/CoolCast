@@ -79,12 +79,13 @@ def fmt_money(amount, currency: str) -> str:
 
     INR: "₹950", "₹12,345", "₹3.44 lakh", "₹2.5 crore".
     Others: "$12,500", "€3.4 million", "£1.2 billion".
+    A valid ISO code without a known symbol is written in front: "UGX 12,500".
     """
-    if currency not in CURRENCIES:
+    if currency not in CURRENCIES and not re.fullmatch(r"[A-Z]{3}", currency or ""):
         raise ValueError(f"Unknown currency code {currency!r}")
     if _is_missing(amount):
         return MISSING
-    symbol = CURRENCIES[currency]
+    symbol = CURRENCIES.get(currency, f"{currency} ")
     sign = "-" if amount < 0 else ""
     value = abs(amount)
     if currency == "INR":

@@ -1,0 +1,24 @@
+# Published PUE figures CoolCast compares users with. Only figures from a
+# published, checkable source are listed. Regional or country averages are
+# left out until they are verified. Explanations: docs/assumptions.md
+
+[google_fleet]
+name = "Google fleet"
+pue = 1.09
+year = 2025
+source = "Google data centres: fleet-wide trailing twelve-month PUE"
+link = "https://www.google.com/about/datacenters/efficiency/"
+
+[largest_facilities]
+name = "Largest facilities"
+pue = 1.44
+year = 2025
+source = "Uptime Institute Global Data Center Survey 2025 (largest data centres)"
+link = "https://uptimeinstitute.com/resources/research-and-reports"
+
+[global_average]
+name = "Global average"
+pue = 1.52
+year = 2026
+source = "Uptime Institute Global Data Center Survey 2026 (industry average)"
+link = "https://uptimeinstitute.com/resources/research-and-reports"

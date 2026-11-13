@@ -54,7 +54,7 @@ python -m venv .venv
 # macOS/Linux:  source .venv/bin/activate
 pip install -r requirements.txt
 pytest
-streamlit run app/Home.py   # available once the app shell is merged
+streamlit run app/Home.py
 ```
 
 ## Development data

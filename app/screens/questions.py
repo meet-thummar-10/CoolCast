@@ -7,12 +7,26 @@ accept "I don't know", which leads to a cautious assumption.
 
 import streamlit as st
 
-from app.components import status_box
+from app.components import error_state, status_box
 from app.formatting import CURRENCIES
-from app.questions import IDK, QUESTIONS, TOTAL, answer_text, answered_count, is_answered
+from app.questions import (
+    IDK,
+    QUESTIONS,
+    TOTAL,
+    answer_text,
+    answered_count,
+    check_answer,
+    is_answered,
+)
 from app.state import go_to
 from app.ui import top_bar
-from src.location import country_names, find_country, load_countries
+from src.location import (
+    LocationError,
+    country_names,
+    find_country,
+    get_location,
+    load_countries,
+)
 from src.recommend import OPTIONS
 
 REVIEW = TOTAL  # index of the review screen
@@ -24,6 +38,69 @@ index = st.session_state["q_index"]
 
 def move(to: int) -> None:
     st.session_state["q_index"] = to
+    st.session_state["q_error"] = None
+
+
+def sync(key: str) -> None:
+    """Copy what is typed or picked for this question into the answers.
+
+    Called from the page and from the Next button, so Next works straight after
+    typing, without pressing Enter first.
+    """
+    state = st.session_state
+    if key == "location":
+        if "q_country" in state:
+            answers["country"] = state["q_country"]
+        if "q_city" in state:
+            answers["city"] = state["q_city"]
+    elif key == "price":
+        if "q_price" in state:
+            answers["price"] = state["q_price"]
+        if "q_currency" in state:
+            answers["currency"] = state["q_currency"]
+    elif key == "supply_temp_c":
+        if state.get("q_temp_idk"):
+            answers[key] = None
+        elif "q_temp" in state:
+            if state["q_temp"] is None:
+                answers.pop(key, None)
+            else:
+                answers[key] = state["q_temp"]
+    elif state.get(f"q_{key}") is not None:
+        answers[key] = None if state[f"q_{key}"] == "idk" else state[f"q_{key}"]
+
+
+def verify_city() -> tuple[str | None, str | None]:
+    """Check with the map service that the city exists in the country: (error, note)."""
+    place = (answers["country"], answers["city"].strip().lower())
+    if st.session_state.get("q_verified") == place:
+        return None, None
+    try:
+        found = get_location(answers["country"], answers["city"])
+    except LocationError as err:
+        if "could not be reached" in str(err):
+            return None, ("We could not check the city right now (no connection to the map "
+                          "service). Please make sure it is spelled correctly.")
+        return str(err), None
+    st.session_state["q_verified"] = place
+    answers["city"] = found["city"]
+    return None, None
+
+
+def go_next() -> None:
+    """Next button: save the answer, check it, and only then move on."""
+    state = st.session_state
+    key = QUESTIONS[index]["key"]
+    sync(key)
+    error, note = check_answer(index, answers)
+    if not error and key == "location":
+        error, city_note = verify_city()
+        note = note or city_note
+    state["q_note"], state["q_note_at"] = note, index + 1 if not error else index
+    if error:
+        state["q_error"], state["q_error_at"] = error, index
+        return
+    move(index + 1)
 
 
 def currency_label(code: str) -> str:
@@ -74,6 +151,8 @@ hr{margin:.6rem 0 1rem !important}
 .st-key-qcard [role="radiogroup"] label:has(input:checked){border-color:#0891B2;
   background:#ECFEFF;box-shadow:0 0 0 3px rgba(8,145,178,.12)}
 .st-key-qcard .stRadio > div{width:100%}
+.q-ok{font-size:13px;color:#166534;background:#F0FDF4;border-radius:10px;padding:8px 12px;
+  line-height:1.45}
 .q-rq{font-size:14px;color:#334155}
 .q-ra{font-size:14px;font-weight:700;color:#0F172A}
 .st-key-qcard .stButton button[kind="tertiary"]{color:#0891B2;font-weight:600;min-height:0;
@@ -134,54 +213,56 @@ with card:
         current = answers.get("country")
         st.selectbox("Country", names, index=names.index(current) if current in names else None,
                      placeholder="Choose your country…", key="q_country", on_change=set_country)
-        answers["city"] = st.text_input("City", value=answers.get("city", ""),
-                                        placeholder="e.g. Pune")
-        st.caption("Only the city's name is used, to look up its past weather. Your data is never "
-                   "sent anywhere.")
+        st.text_input("City", value=answers.get("city", ""), placeholder="e.g. Pune",
+                      key="q_city")
         if answers.get("country"):
-            status_box("good", f"✓ All costs and savings will be shown in "
-                               f"{currency_label(answers['currency'])}, the currency of "
-                               f"{answers['country']}.")
+            st.markdown(f'<div class="q-ok">✓ Results will be shown in '
+                        f'<b>{currency_label(answers["currency"])}</b>, the currency of '
+                        f'{answers["country"]}. Only the city\'s name is looked up; your data is '
+                        "never sent anywhere.</div>", unsafe_allow_html=True)
+        else:
+            st.caption("Only the city's name is used, to look up its past weather. Your data is "
+                       "never sent anywhere.")
 
     elif key == "price":
         codes = sorted({row["currency"] for row in load_countries().values()})
         if "q_currency" not in st.session_state:
             st.session_state["q_currency"] = answers.get("currency") or "USD"
         left, right = st.columns([2, 1])
-        price = left.number_input("Price per kWh (from your bill)", min_value=0.0, step=0.01,
-                                  value=float(answers.get("price") or 0.0), format="%.4f")
-        currency = right.selectbox("Currency", codes, key="q_currency", format_func=currency_label,
-                                   help="Set from your country. Change it only if your bill uses "
-                                        "another currency.")
-        answers["price"], answers["currency"] = price or None, currency
+        left.number_input("Price per kWh (from your bill)", min_value=0.0, step=0.01,
+                          value=answers.get("price"), placeholder="e.g. 8.50", key="q_price")
+        right.selectbox("Currency", codes, key="q_currency", format_func=currency_label,
+                        help="Set from your country. Change it only if your bill uses another "
+                             "currency.")
         st.caption("Use the total price per kWh on your bill (energy charge plus any per-kWh fees). "
                    "Your own bill is more accurate than any national average.")
 
     elif key == "supply_temp_c":
         unknown = st.checkbox(IDK, value=key in answers and answers[key] is None, key="q_temp_idk")
         if unknown:
-            answers[key] = None
             st.caption("We will assume 1 °C of room to raise the temperature (a cautious guess).")
         else:
-            temp = st.number_input("Supply air temperature to the servers (°C)", min_value=10.0,
-                                   max_value=35.0, step=0.5,
-                                   value=float(answers.get(key) or 22.0))
-            answers[key] = temp
+            st.number_input("Supply air temperature to the servers (°C)", step=0.5,
+                            value=answers.get(key), placeholder="e.g. 22", key="q_temp")
+            st.caption("Most data centres supply air between 18 and 27 °C.")
 
     else:
         codes = [*OPTIONS[key], "idk"]
         labels = {**OPTIONS[key], "idk": IDK}
         current = ("idk" if answers[key] is None else answers[key]) if key in answers else None
-        picked = st.radio(q["title"], codes, format_func=labels.get, label_visibility="collapsed",
-                          index=codes.index(current) if current in codes else None, key=f"q_{key}")
-        if picked is not None:
-            answers[key] = None if picked == "idk" else picked
+        st.radio(q["title"], codes, format_func=labels.get, label_visibility="collapsed",
+                 index=codes.index(current) if current in codes else None, key=f"q_{key}")
+
+    sync(key)
+    if st.session_state.get("q_error_at") == index and st.session_state.get("q_error"):
+        error_state(st.session_state["q_error"])
+    elif st.session_state.get("q_note_at") == index and st.session_state.get("q_note"):
+        status_box("check", st.session_state["q_note"])
 
     back, _, forward = st.columns([1, 2, 1])
     back.button("← Back", key="back", disabled=index == 0, on_click=move, args=(index - 1,),
                 use_container_width=True)
     forward.button("Review answers →" if index == TOTAL - 1 else "Next →", key="next",
-                   type="primary", disabled=q.get("required", False) and not is_answered(index, answers),
-                   on_click=move, args=(index + 1,), use_container_width=True)
+                   type="primary", on_click=go_next, use_container_width=True)
 
 show_progress()

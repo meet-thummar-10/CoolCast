@@ -5,7 +5,14 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app.pipeline import STEPS, run_analysis
-from app.questions import QUESTIONS, TOTAL, answer_text, answered_count, is_answered
+from app.questions import (
+    QUESTIONS,
+    TOTAL,
+    answer_text,
+    answered_count,
+    check_answer,
+    is_answered,
+)
 from src import location
 from src.data import load_demo_data
 
@@ -48,16 +55,79 @@ def test_answered_counts_i_dont_know():
 # ------------------------------------------------------------ screen
 
 
-def test_next_is_disabled_until_location_is_given():
+@pytest.fixture
+def fake_map(monkeypatch):
+    """The map service knows Frankfurt (Germany) and Pune (India); nothing else."""
+    known = {("Frankfurt", "DE"): "Frankfurt am Main", ("Pune", "IN"): "Pune"}
+
+    def fake(url, params):
+        name = known.get((params.get("name"), params.get("countryCode")))
+        return {"results": [{"name": name, "latitude": 1.0, "longitude": 2.0}]} if name else {}
+
+    monkeypatch.setattr(location, "_get_json", fake)
+
+
+def errors(at):
+    return [e.value for e in at.error]
+
+
+def test_next_checks_the_location_before_moving_on(fake_map):
     at = questions()
     assert not at.exception
     assert any("About your site" in m.value for m in at.markdown)
-    assert at.button(key="next").disabled
+    at.button(key="next").click().run()
+    assert at.session_state["q_index"] == 0 and "choose your country" in errors(at)[0]
+
     at.selectbox(key="q_country").set_value("Germany").run()
-    at.text_input[0].input("Frankfurt").run()
     assert at.session_state["answers"]["currency"] == "EUR"
-    assert any("EUR" in s.value for s in at.success)
-    assert not at.button(key="next").disabled
+    assert any("EUR" in m.value and "q-ok" in m.value for m in at.markdown)
+    at.text_input(key="q_city").input("Qwertyville")
+    at.button(key="next").click().run()
+    assert at.session_state["q_index"] == 0 and "could not find 'Qwertyville'" in errors(at)[0]
+
+    at.text_input(key="q_city").input("Frankfurt")
+    at.button(key="next").click().run()  # no separate run after typing: Next saves it
+    assert at.session_state["q_index"] == 1
+    assert at.session_state["answers"]["city"] == "Frankfurt am Main"
+
+
+def test_price_starts_empty_and_must_be_real():
+    at = questions({"country": "India", "city": "Pune", "currency": "INR"}, 1)
+    assert at.number_input(key="q_price").value is None  # nothing to delete before typing
+    at.button(key="next").click().run()
+    assert at.session_state["q_index"] == 1 and "price per kWh" in errors(at)[0]
+    at.number_input(key="q_price").set_value(0.0)
+    at.button(key="next").click().run()
+    assert at.session_state["q_index"] == 1 and "more than 0" in errors(at)[0]
+    at.number_input(key="q_price").set_value(8.5)
+    at.button(key="next").click().run()
+    assert at.session_state["q_index"] == 2
+    assert at.session_state["answers"]["price"] == 8.5
+
+
+def test_supply_temperature_must_be_realistic():
+    at = questions(dict(FULL, supply_temp_c=22.0), 5)
+    at.number_input(key="q_temp").set_value(80.0)
+    at.button(key="next").click().run()
+    assert at.session_state["q_index"] == 5 and "not a realistic" in errors(at)[0]
+    at.number_input(key="q_temp").set_value(16.0)
+    at.button(key="next").click().run()
+    assert at.session_state["q_index"] == 6
+    assert any("outside the usual" in w.value for w in at.warning)
+
+
+def test_choice_question_needs_an_answer():
+    answers = {k: v for k, v in FULL.items() if k != "vfd"}
+    at = questions(answers, 6)
+    at.button(key="next").click().run()
+    assert at.session_state["q_index"] == 6 and "choose an option" in errors(at)[0]
+
+
+def test_check_answer_rules():
+    assert check_answer(0, {"country": "India", "city": "12"})[0]
+    assert check_answer(0, {"country": "India", "city": "Pune"}) == (None, None)
+    assert check_answer(5, {"supply_temp_c": None}) == (None, None)
+    assert check_answer(5, {})[0]
 
 
 def test_progress_after_the_two_required_questions():

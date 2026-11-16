@@ -51,7 +51,7 @@ def test_answered_counts_i_dont_know():
 def test_next_is_disabled_until_location_is_given():
     at = questions()
     assert not at.exception
-    assert at.title[0].value == "About your site"
+    assert any("About your site" in m.value for m in at.markdown)
     assert at.button(key="next").disabled
     at.selectbox(key="q_country").set_value("Germany").run()
     at.text_input[0].input("Frankfurt").run()
@@ -77,7 +77,7 @@ def test_choice_question_and_i_dont_know():
 def test_review_screen_and_analyse():
     at = questions(FULL)
     assert at.session_state["q_index"] == TOTAL  # all answered: starts at the review
-    assert at.subheader[0].value == "Check your answers"
+    assert any("Check your answers" in m.value for m in at.markdown)
     at.button(key="edit_5").click().run()
     assert at.session_state["q_index"] == 5
     at.session_state["q_index"] = TOTAL

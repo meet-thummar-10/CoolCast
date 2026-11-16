@@ -29,7 +29,8 @@ def test_landing_page_has_no_sidebar():
 def test_steps_have_no_sidebar(stage, title):
     at = app(stage)
     assert not at.exception
-    assert at.title[0].value == title
+    headings = [t.value for t in at.title] + [m.value for m in at.markdown]
+    assert any(title in h for h in headings)
     assert len(at.sidebar.button) == 0
 
 

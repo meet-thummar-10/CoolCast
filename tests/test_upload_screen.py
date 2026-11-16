@@ -33,9 +33,10 @@ def continue_button(at):
 def test_before_upload_shows_both_ways_and_downloads():
     at = screen()
     assert not at.exception
-    assert at.title[0].value == "Upload your data"
-    subheaders = [s.value for s in at.subheader]
-    assert "Use our template" in subheaders and "Upload your file as it is" in subheaders
+    assert any("Upload your data" in m.value for m in at.markdown)
+    assert any("Choose your file" in m.value for m in at.markdown)
+    labels = [e.label for e in at.expander]
+    assert labels == ["Which columns can my file have?", "File rules", "Units we convert for you"]
     assert len(at.get("download_button")) == 2
 
 

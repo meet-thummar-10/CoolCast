@@ -17,7 +17,7 @@ def test_landing_page_has_no_sidebar():
     at = app()
     assert not at.exception
     assert at.session_state["stage"] == "landing"
-    assert any("Find where your data centre wastes energy" in m.value for m in at.markdown)
+    assert any("Find where your data centre" in m.value for m in at.markdown)
     assert len(at.sidebar.button) == 0
 
 

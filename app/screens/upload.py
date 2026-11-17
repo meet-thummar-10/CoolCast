@@ -30,7 +30,7 @@ NAMES = {
     "temp_c": "Outdoor temperature", "humidity": "Outdoor humidity",
 }
 UNIT_CHOICES = {
-    "power": {"kW": "kW (average power)", "W": "W (watts)", "kWh": "kWh per reading"},
+    "power": {"kW": "kW", "W": "W (watts)", "kWh": "kWh per reading"},
     "temp_c": {"C": "°C", "F": "°F"},
     "humidity": {"pct": "% (0-100)", "fraction": "0-1"},
 }
@@ -66,18 +66,87 @@ def unit_kind(std: str) -> str:
 
 # ---------------------------------------------------------------- top
 
-top_bar("upload")
-st.title("Upload your data")
-st.caption("🔒 Your file is processed in memory for this session only and deleted when you exit. "
-           "Only your city's name is sent anywhere, later, to look up public weather.")
+CSS = """
+<style>
+.block-container{max-width:1180px}
+.up-chips{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 14px}
+.up-chip{background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:10px 14px;
+  font-size:14px;color:#334155;flex:1 1 220px}
+.up-chip b{display:block;color:#0F172A;font-size:15px}
+.st-key-dropzone{background:linear-gradient(135deg,#ECFEFF,#EEF2FF);
+  border:2px dashed #0891B2;border-radius:20px;padding:22px 24px 18px;min-height:256px}
+.st-key-dropzone [data-testid="stFileUploaderDropzone"]{background:#FFFFFF;
+  border:1px solid #C7D2FE;border-radius:14px;padding:34px 22px}
+.st-key-dropzone [data-testid="stFileUploaderDropzone"] button{
+  background:linear-gradient(120deg,#0891B2,#4338CA);color:#FFFFFF;border:0;font-weight:700}
+.st-key-helper{background:#0F172A;border-radius:20px;padding:22px 22px 16px;min-height:256px}
+.st-key-helper p,.st-key-helper span{color:#CBD5E1}
+.helper-t{font-size:18px;font-weight:700;color:#FFFFFF !important;margin:0 0 4px}
+.st-key-helper .stDownloadButton button{background:#22D3EE;color:#0F172A;border:0;
+  font-weight:700;width:100%}
+.st-key-helper .stDownloadButton button:hover{background:#67E8F9;color:#0F172A}
+.st-key-helper .stDownloadButton button p{color:#0F172A !important;font-weight:700}
+.st-key-helper .stDownloadButton,.st-key-helper .stDownloadButton button{width:100%}
+.up-table{width:100%;border-collapse:collapse;font-size:14px}
+.up-table th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;
+  color:#64748B;padding:8px 10px;border-bottom:1px solid #E2E8F0}
+.up-table td{padding:8px 10px;border-bottom:1px solid #F1F5F9;color:#334155;vertical-align:top}
+.up-table code{background:#ECFEFF;color:#0E7490;padding:2px 6px;border-radius:6px}
+.req{background:#FEE2E2;color:#991B1B;font-size:11px;font-weight:700;padding:2px 8px;
+  border-radius:999px}
+.opt{background:#F1F5F9;color:#475569;font-size:11px;font-weight:700;padding:2px 8px;
+  border-radius:999px}
+.st-key-nextbar .stButton button{font-size:18px;padding:.8rem 1.6rem}
+.st-key-nextbar .stButton button p{font-size:18px;font-weight:800}
+</style>
+"""
+st.markdown(CSS, unsafe_allow_html=True)
 
-template, as_is = st.columns(2, gap="large")
-with template:
-    with st.container(border=True):
-        st.subheader("Use our template")
-        st.dataframe(TEMPLATE_COLUMNS, hide_index=True)
+top_bar("upload")
+st.markdown('<div class="cc-h">Upload your data</div>'
+            '<div class="cc-lead">Drop in a file with your power readings. We check it, you '
+            "confirm the columns, and you are ready for the questions.</div>"
+            '<div class="up-chips">'
+            '<div class="up-chip"><b>What the file needs</b>Date and time, IT power, and total '
+            "facility power</div>"
+            '<div class="up-chip"><b>File type</b>CSV or Excel (.xlsx), any column names and '
+            "units</div>"
+            '<div class="up-chip"><b>How much data</b>At least 1 month · 6+ months recommended'
+            "</div>"
+            '<div class="up-chip"><b>🔒 Private</b>Processed for this session only, deleted '
+            "when you exit</div></div>", unsafe_allow_html=True)
+
+drop, helper = st.columns([5, 2], gap="medium")
+with drop:
+    with st.container(key="dropzone"):
+        st.markdown('<p class="cc-step-t"><span class="cc-num">1</span>Choose your file</p>',
+                    unsafe_allow_html=True)
+        uploaded = st.file_uploader("Drag a CSV or Excel file here, or click Upload",
+                                    type=["csv", "xlsx"], key="file")
+with helper:
+    with st.container(key="helper"):
+        st.markdown('<p class="helper-t">No file ready?</p>'
+                    "<p>Start from our template, or try CoolCast with the example file.</p>",
+                    unsafe_allow_html=True)
+        st.download_button("Download template", template_csv(), "coolcast_template.csv",
+                           "text/csv", key="dl_template")
+        st.download_button("Download example file", example_csv(), "coolcast_example.csv",
+                           "text/csv", key="dl_example")
+
+if uploaded is None:
+    rows = "".join(
+        f"<tr><td><code>{r['Column']}</code></td><td>{r['What it means']}</td>"
+        f"<td>{r['Unit']}</td><td><span class=\"{'req' if r['Required?'] == 'Required' else 'opt'}"
+        f"\">{r['Required?']}</span></td></tr>" for _, r in TEMPLATE_COLUMNS.iterrows())
+    with st.expander("Which columns can my file have?", expanded=True):
+        st.markdown('<table class="up-table"><tr><th>Column in our template</th>'
+                    "<th>What it means</th><th>Unit</th><th></th></tr>" + rows + "</table>",
+                    unsafe_allow_html=True)
+        st.caption("Your own column names are fine too: after you upload, we suggest which of "
+                   "your columns is which and you confirm.")
+    left, right = st.columns(2)
+    with left.expander("File rules"):
         st.markdown(
-            "**File rules**\n"
             "- First row = column names. One row per timestamp, no repeated timestamps.\n"
             "- **Average power in kW**, not cumulative meter readings. If you have kWh per "
             "interval: kW = kWh ÷ interval in hours.\n"
@@ -85,28 +154,14 @@ with template:
             "reading.\n"
             "- Plain numbers only: `1053.7`, not `1,053.7` or `1053 kW`.\n"
             "- CSV (comma-separated, UTF-8) or Excel .xlsx (first sheet), up to 200 MB.")
-        a, b = st.columns(2)
-        a.download_button("Download template (CSV)", template_csv(), "coolcast_template.csv",
-                          "text/csv", key="dl_template")
-        b.download_button("Download example file", example_csv(), "coolcast_example.csv",
-                          "text/csv", key="dl_example")
-with as_is:
-    with st.container(border=True):
-        st.subheader("Upload your file as it is")
+    with right.expander("Units we convert for you"):
         st.markdown(
-            "Any column names and units are fine. After uploading, we suggest which of your "
-            "columns is which, and you confirm.\n\n"
-            "- **Required:** a date-and-time column, IT power, and total facility power (or its "
-            "parts: cooling, pumps, fans, lights…).\n"
-            "- **Units we convert for you:** W or kW, kWh per interval, °F or °C, humidity as % "
-            "or 0–1, day-first or month-first dates.\n"
-            "- **Optional:** separate cooling, pump, fan, lighting columns and outdoor "
-            "temperature or humidity.\n"
-            "- At least **1 month** of data is needed; **6+ months** is recommended and "
-            "**12+ months** gives the best results.")
-
-uploaded = st.file_uploader("Drag a CSV or Excel file here", type=["csv", "xlsx"], key="file")
-if uploaded is None:
+            "- Power in **W or kW**, or energy as **kWh per reading**\n"
+            "- Temperature in **°F or °C**\n"
+            "- Humidity as **% or 0–1**\n"
+            "- Dates written **day-first or month-first**\n"
+            "- If there is no total column, we **add up the parts** (cooling, pumps, fans, "
+            "lights, other)")
     st.stop()
 
 # ---------------------------------------------------------------- reading
@@ -125,7 +180,8 @@ raw: pd.DataFrame = st.session_state["raw"]
 
 # ---------------------------------------------------------------- column confirm
 
-st.subheader("Check your columns")
+st.markdown('<p class="cc-step-t" style="margin-top:18px"><span class="cc-num">2</span>'
+            "Check your columns</p>", unsafe_allow_html=True)
 st.caption("We guessed which of your columns is which. Change anything that is wrong.")
 choices = [NOT_USED, *NAMES]
 mapping = {}
@@ -170,7 +226,8 @@ except UploadError as err:
 
 # ---------------------------------------------------------------- checks
 
-st.subheader("File check")
+st.markdown('<p class="cc-step-t" style="margin-top:18px"><span class="cc-num">3</span>'
+            "File check</p>", unsafe_allow_html=True)
 length = check_length(table)
 check_line("good", f"{report['rows_read']:,} rows read")
 check_line("good", f"Dates {report['start']:%d %b %Y} to {report['end']:%d %b %Y} "
@@ -209,5 +266,8 @@ def save_and_continue() -> None:
     go_to("questions")
 
 
-st.button("Continue to 10 questions →", key="next", type="primary",
-          disabled=level == "blocked", on_click=save_and_continue)
+with st.container(key="nextbar"):
+    _, middle, _ = st.columns([1, 2, 1])
+    middle.button("Continue to 10 questions →", key="next", type="primary",
+                  disabled=level == "blocked", on_click=save_and_continue,
+                  use_container_width=True)

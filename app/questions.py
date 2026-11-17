@@ -78,3 +78,51 @@ def answer_text(index: int, answers: dict) -> str:
     if key == "supply_temp_c":
         return f"{value:g} °C"
     return OPTIONS[key][value]
+
+
+TEMP_LIMITS = (10.0, 35.0)        # outside this, the value is not a real supply temperature
+TEMP_USUAL = (18.0, 27.0)         # ASHRAE recommended range
+
+
+def check_answer(index: int, answers: dict) -> tuple[str | None, str | None]:
+    """Check one answer before moving on: ``(error, note)``.
+
+    An error stops the user at the question. A note is shown but lets them continue.
+    """
+    key = QUESTIONS[index]["key"]
+    if key == "location":
+        city = str(answers.get("city") or "").strip()
+        if not answers.get("country"):
+            return "Please choose your country.", None
+        if not city:
+            return "Please enter the city where your data centre is.", None
+        if len(city) < 2 or not any(c.isalpha() for c in city):
+            return f"'{city}' does not look like a city name. Please enter the real city.", None
+        return None, None
+    if key == "price":
+        price = answers.get("price")
+        if price is None:
+            return "Please enter the price per kWh from your electricity bill.", None
+        if price <= 0:
+            return "The price must be more than 0. Please enter the real price per kWh.", None
+        if not answers.get("currency"):
+            return "Please choose the currency of your bill.", None
+        return None, None
+    if key == "supply_temp_c":
+        if key not in answers:
+            return "Please enter the supply temperature, or tick \"I don't know\".", None
+        temp = answers[key]
+        if temp is None:
+            return None, None
+        low, high = TEMP_LIMITS
+        if not low <= temp <= high:
+            return (f"{temp:g} °C is not a realistic supply temperature for a data centre "
+                    f"(it should be between {low:g} and {high:g} °C). Please enter the real "
+                    "value, or tick \"I don't know\"."), None
+        if not TEMP_USUAL[0] <= temp <= TEMP_USUAL[1]:
+            return None, (f"You entered {temp:g} °C, which is outside the usual 18-27 °C range. "
+                          "Go back and correct it if that was a typing mistake.")
+        return None, None
+    if key not in answers:
+        return "Please choose an option. If you are not sure, choose \"I don't know\".", None
+    return None, None

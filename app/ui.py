@@ -15,9 +15,31 @@ CSS = """
 <style>
 .cc-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:22px;color:#0F172A}
 .cc-brand svg{width:30px;height:30px;stroke:#0891B2}
-.cc-steps{display:flex;gap:18px;flex-wrap:wrap;font-size:14px;color:#64748B}
-.cc-steps .on{color:#0F172A;font-weight:600}
-.cc-steps .done{color:#0891B2}
+.block-container{padding-top:1.4rem}
+.cc-steps{display:flex;gap:10px;flex-wrap:wrap;font-size:14px;color:#64748B;
+  justify-content:center}
+.cc-steps span{padding:6px 14px;border-radius:999px;background:#FFFFFF;border:1px solid #E2E8F0}
+.cc-steps .on{color:#FFFFFF;font-weight:700;border:0;
+  background:linear-gradient(120deg,#0891B2,#4338CA)}
+.cc-steps .done{color:#0E7490;background:#ECFEFF;border-color:#A5F3FC;font-weight:600}
+.stButton button[kind="primary"],.stDownloadButton button[kind="primary"]{
+  background:linear-gradient(120deg,#0891B2,#4338CA);border:0;color:#FFFFFF;font-weight:700;
+  box-shadow:0 8px 20px rgba(67,56,202,.22)}
+.stButton button[kind="primary"]:hover,.stDownloadButton button[kind="primary"]:hover{
+  filter:brightness(1.08);color:#FFFFFF}
+.stButton button[kind="primary"]:disabled{background:#CBD5E1;box-shadow:none;color:#FFFFFF}
+.stButton button[kind="secondary"],.stDownloadButton button[kind="secondary"]{
+  border:1.5px solid #0891B2;color:#0E7490;font-weight:600;background:#FFFFFF}
+.stButton button[kind="secondary"]:hover,.stDownloadButton button[kind="secondary"]:hover{
+  background:#ECFEFF;border-color:#0E7490;color:#0E7490}
+.cc-h{font-size:38px !important;font-weight:800;color:#0F172A;letter-spacing:-.02em;margin:0;
+  line-height:1.15}
+.cc-lead{font-size:17px !important;color:#475569;margin:6px 0 0}
+.cc-num{display:inline-flex;width:28px;height:28px;border-radius:9px;align-items:center;
+  justify-content:center;font-weight:800;color:#FFFFFF;font-size:14px;margin-right:10px;
+  background:linear-gradient(135deg,#0891B2,#4338CA)}
+.cc-step-t{font-size:20px !important;font-weight:700;color:#0F172A;display:flex;align-items:center;
+  margin:0 0 2px}
 .cc-hero h1{font-size:46px;line-height:1.1;margin:0}
 .cc-card{background:#FFFFFF;border:1px solid #E2E8F0;border-radius:14px;padding:20px;height:100%}
 .cc-card b{display:block;font-size:17px;margin-bottom:6px}

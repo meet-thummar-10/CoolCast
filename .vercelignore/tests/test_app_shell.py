@@ -6,7 +6,7 @@ from streamlit.testing.v1 import AppTest
 APP = str(Path(__file__).resolve().parent.parent / "app" / "Home.py")
 
 
-def app(stage=None):
+def get_test_app(stage=None):
     at = AppTest.from_file(APP, default_timeout=30)
     if stage:
         at.session_state["stage"] = stage
@@ -14,7 +14,7 @@ def app(stage=None):
 
 
 def test_landing_page_has_no_sidebar():
-    at = app()
+    at = get_test_app()
     assert not at.exception
     assert at.session_state["stage"] == "landing"
     assert any("Find where your data centre" in m.value for m in at.markdown)
@@ -27,7 +27,7 @@ def test_landing_page_has_no_sidebar():
     ("analysing", "Analysing your data"),
 ])
 def test_steps_have_no_sidebar(stage, title):
-    at = app(stage)
+    at = get_test_app(stage)
     assert not at.exception
     headings = [t.value for t in at.title] + [m.value for m in at.markdown]
     assert any(title in h for h in headings)
@@ -35,7 +35,7 @@ def test_steps_have_no_sidebar(stage, title):
 
 
 def test_flow_from_landing_to_analysis():
-    at = app()
+    at = get_test_app()
     at.button(key="upload_top").click().run()
     assert at.session_state["stage"] == "upload"
     # The upload, questions and analysing steps have their own tests
@@ -44,7 +44,7 @@ def test_flow_from_landing_to_analysis():
 
 
 def test_analysis_shows_sidebar_with_exit():
-    at = app("analysis")
+    at = get_test_app("analysis")
     assert not at.exception
     assert at.title[0].value == "Data"
     keys = [b.key for b in at.sidebar.button]
@@ -66,7 +66,7 @@ def test_analysis_pages_in_order_and_no_home():
 def test_every_analysis_page_loads():
     from app.Home import ANALYSIS_PAGES, HERE
 
-    at = app("analysis")
+    at = get_test_app("analysis")
     for file, title, _ in ANALYSIS_PAGES:
         at.switch_page(str(HERE / "pages" / file)).run()
         assert not at.exception, file
@@ -86,6 +86,6 @@ def test_exit_deletes_data_and_returns_to_landing():
 
 
 def test_cancel_returns_to_landing():
-    at = app("questions")
+    at = get_test_app("questions")
     at.button(key="cancel").click().run()
     assert at.session_state["stage"] == "landing"
